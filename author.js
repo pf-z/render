@@ -1,6 +1,6 @@
 
 export let author = {
-    avatar: '/avatar.png',
+    avatar: '/cs/avatar.png',
     name: 'pf.zh',
     intro: 'XJTU博士在读，主要研究方向为教育与经济、复杂网络理论。',
     tags: [
@@ -10,7 +10,7 @@ export let author = {
     ],
 
     moreText: '关注微信公众号，及时获取更多动态',
-    qrcode: '/qrcode.jpg',
+    qrcode: '/cs/qrcode.jpg',
     qrAlt: '微信公众号：数理模型与复杂系统',
 
     social: {
