@@ -4,7 +4,7 @@
 <h2>一、从BIOS中获取系统数据</h2>
 <p>setup做的第一件事就是从BIOS中获取系统数据，并将其保存到<code>0x90000 - 0x901FF</code>的位置。<code>0x90000</code>是bootsect的始址，并不超过<code>0x90200</code>，但是由于bootsect已经完成了任务，所以这段空间可以直接覆盖掉。</p>
 <p>先是读取光标位置，通过BIOS中断<code>0x10</code>的<code>0x03</code>号功能来实现，代码如下</p>
-<pre><code class="language-shell">! ok, the read went well so we get current cursor position and save it for
+<pre><code class="language-armasm">! ok, the read went well so we get current cursor position and save it for
 ! posterity.
 
     mov ax,#INITSEG ! this is done in bootsect already, but...
@@ -24,7 +24,7 @@
 </ul>
 <p><code>dx</code>寄存器总共两个字节，从<code>0x90000</code>开始保存，即占用<code>0x90000</code>和<code>0x90001</code>两个字节。</p>
 <p>接下来获取拓展内存大小(即RAM中高于1MB的部分)，调用<code>0x15</code>中断的<code>0x88</code>功能号实现，代码如下</p>
-<pre><code class="language-shell">! Get memory size (extended mem, kB)
+<pre><code class="language-armasm">! Get memory size (extended mem, kB)
 
     mov ah,#0x88
     int 0x15
@@ -32,7 +32,7 @@
 </code></pre>
 <p>返回值保存在<code>ax</code>寄存器中，共两个字节，保存在<code>0x90002</code>和<code>0x90003</code>中。</p>
 <p>接下来读取显卡数据，通过<code>0x10</code>中断的<code>0x0f</code>功能实现，代码如下</p>
-<pre><code class="language-shell">! Get video-card data:
+<pre><code class="language-armasm">! Get video-card data:
 
     mov ah,#0x0f
     int 0x10
@@ -47,7 +47,7 @@
 </ul>
 <p>然后分别保存在偏移为<code>4</code>和<code>6</code>的位置。</p>
 <p>接下来检查显示方式并取参数，分别通过<code>0x10</code>中断的<code>0x12</code>及<code>0x10</code>功能来实现，代码如下</p>
-<pre><code class="language-shell">! check for EGA/VGA and some config parameters
+<pre><code class="language-armasm">! check for EGA/VGA and some config parameters
 
     mov ah,#0x12
     mov bl,#0x10
@@ -64,7 +64,7 @@
 </ul>
 <p>然后分别保存在偏移为<code>8</code>, <code>10</code>, <code>12</code>的位置。</p>
 <p>接着读取第一个硬盘的信息。需要注意的是，第一个硬盘参数表的首地址是中断向量<code>0x41</code>的向量值，该参数表的长度为16字节，保存的地址始址为<code>0x90080</code>，连续16个字节(<code>0x10</code>)。代码如下</p>
-<pre><code class="language-shell">! Get hd0 data
+<pre><code class="language-armasm">! Get hd0 data
 
     mov ax,#0x0000
     mov ds,ax
@@ -78,7 +78,7 @@
 </code></pre>
 <p>和前面不一样，这里使用<code>es:di</code>来指向传输的目的地址，而<code>ds:si</code>则指向参数表的地址，即源地址。</p>
 <p>接下来要读取第二个硬盘的信息，代码逻辑和上述一致，其参数表的地址是中断向量<code>0x46</code>的地址值，由于第一个硬盘参数表刚好保存到<code>0x9008F</code>的位置，那么第二个硬盘的参数表就是从<code>0x90090</code>开始，连续16个字节(<code>0x10</code>)，代码如下</p>
-<pre><code class="language-shell">! Get hd1 data
+<pre><code class="language-armasm">! Get hd1 data
 
     mov ax,#0x0000
     mov ds,ax
@@ -91,7 +91,7 @@
     movsb
 </code></pre>
 <p>最后要做的是检查系统是否存在第二个硬盘，如果不存在则将上述保存的第二个硬盘参数表清零，代码如下</p>
-<pre><code class="language-shell">! Check that there IS a hd1 :-)
+<pre><code class="language-armasm">! Check that there IS a hd1 :-)
 
     mov	ax,#0x01500
     mov	dl,#0x81
@@ -110,11 +110,11 @@ no_disk1:
 </code></pre>
 <p>这个过程通过调用中断<code>0x13</code>的<code>0x15</code>号功能来实现。入口参数为<code>dl=驱动器号</code>，其中<code>0x8X</code>表示硬盘：<code>0x80</code>表示第一个硬盘、<code>0x81</code>表示第二个硬盘，那么自然这里必然是<code>0x81</code>。其出口参数为<code>ah=类型码</code>，<code>00</code>表示不存在此盘，并将<code>CF</code>置位；<code>01</code>表示软驱，没有<code>change-line</code>支持；<code>02</code>表示软驱或其它可移动设备，有<code>change-line</code>支持；<code>03</code>表示硬盘。</p>
 <p>通过<code>jc</code>指令检查<code>CF</code>是否置位，如果置位即不存在第二个硬盘，那么就跳转至<code>no_disk1</code>处清零第二个参数表。如果存在第二个硬盘，那么<code>jc</code>指令自然不满足则执行<code>cmp</code>指令判断设备是否为硬盘，如果是则将标志寄存器<code>ZF</code>置位(即<code>ah == 03</code>)。再通过<code>je</code>指令判断<code>ZF</code>是否置位，如果置位那么代表设备为硬盘，那么就跳转至<code>is_disk1</code>处继续执行。即</p>
-<pre><code class="language-shell">is_disk1:
+<pre><code class="language-armasm">is_disk1:
 </code></pre>
 <h2>二、关中断！并将system移动至0x00000处</h2>
 <p><code>is_disk1</code>第一句代码就是关中断，如下</p>
-<pre><code class="language-shell">is_disk1:
+<pre><code class="language-armasm">is_disk1:
 
 ! now we want to move to protected mode ...
 
@@ -122,7 +122,7 @@ no_disk1:
 </code></pre>
 <p><code>cli</code>指令将CPU标志寄存器中中断允许标志<code>IF</code>置零，即不允许中断。关中断是16位实模式进入32位保护模式的标志性动作，这意味着接下来就可以废除16位实模式下的中断向量表，并初步打开32位寻址空间、建立保护模式下的中断响应机制等，这些都是与32位保护模式相配套的。</p>
 <p>作为转变的开始，已经关闭了中断，那么接下来系统将不会响应中断，以便一心一意向保护模式转变。现在开始将system移动至内存始址处，代码如下</p>
-<pre><code class="language-shell">! first we move the system to it's rightful place
+<pre><code class="language-armasm">! first we move the system to it's rightful place
 
     mov	ax,#0x0000
     cld             ! 'direction'=0, movs moves forward
@@ -140,7 +140,7 @@ do_move:
     jmp	do_move
 </code></pre>
 <p>其中<code>es:di</code>指向目的地址<code>0x0000:0x0</code>处，<code>ds:si</code>指向源地址<code>0x10000:0x0</code>处，由于起初假设system模块不会超过<code>0x80000</code>，即<code>512KB</code>，那么就不会超过<code>0x90000</code>,即system最初不会覆盖bootsect。那么这段程序就是将<code>[0x10000, 0x10000 + 512KB)</code>的内存数据块移动<code>[0x00000, 0x00000 + 512KB)</code>处，移动的数据块长度为<code>0x8000</code>节，即<code>512KB</code>。也就是说将每个源地址字节向内存低端移动<code>0x10000</code>个位置最终到达目标位置，上述汇编代码可以用如下伪码描述</p>
-<pre><code class="language-shell">ax = 0x0000
+<pre><code class="language-armasm">ax = 0x0000
 while truees = ax
     ax += 0x1000
     ds = ax
@@ -150,7 +150,7 @@ while truees = ax
         break
 </code></pre>
 <p>再进一步地说明，上述伪码中各参数变动情况如下所示(注：下述<code>while</code>循环用来解释上述中的<code>ds:si to es:di, moving one seg continuously, i.e. 64KB</code>)</p>
-<pre><code class="language-shell">The first cycle is as follows:
+<pre><code class="language-armasm">The first cycle is as follows:
   es = 0x0000, ax = 0x1000, ds = 0x1000, di = 0x0, si = 0x0, cx = 0x8000
     while cx != 0x0000
       ds:si to es:di, one word at a time, i.e. movsw
@@ -164,7 +164,7 @@ The second cycle is as follows:
 ...
 </code></pre>
 <p>这就很容易理解了。那么该段汇编就可以整体上用如下伪码描述</p>
-<pre><code class="language-shell">ax = 0x0000
+<pre><code class="language-armasm">ax = 0x0000
 while truees = ax
     ax += 0x1000
     ds = ax
@@ -184,21 +184,21 @@ while truees = ax
 </ul>
 <h2>三、设置IDT与GDT</h2>
 <p>IDT，即中断描述符表(Interrupt Descriptor Table)，其保存的是所有中断服务程序的入口地址，就类似于实模式下的中断向量表，这也是构建保护模式下中断机制的开始。实模式下终端向量表的始址在<code>0x00000</code>处，这个位置是固定的，而保护模式下IDT的位置是不固定的，可以在任何位置，那么为了找到IDT就要将IDT的入口地址保存在一个寄存器当中，这个寄存器就是IDTR(Interrupt Descriptor Table Register, IDT基址寄存器)，该寄存器共48位，即3个字长，第一个字是限长，剩余的两个字是基地址，结构如下</p>
-<pre><code class="language-shell">47----15-----0
+<pre><code class="language-armasm">47----15-----0
  base | limit 
 </code></pre>
 <p>将IDT入口地址传递给IDTR的过程就是设置IDTR，代码如下</p>
-<pre><code class="language-shell">    lidt    idt_48      ! load idt with 0,0
+<pre><code class="language-armasm">    lidt    idt_48      ! load idt with 0,0
 </code></pre>
 <p>那么这里标号<code>idt_48</code>对应的就是IDT的入口地址，<code>idt_48</code>的内容如下</p>
-<pre><code class="language-shell">idt_48:
+<pre><code class="language-armasm">idt_48:
     .word	0           ! idt limit=0
     .word	0,0         ! idt base=0L
 </code></pre>
 <p>按照上面的解释，这就很容易理解了。第一个字为限长，这里为0，剩余两个字为基址，也是0，即基址就是<code>0x00000</code>处。这里基址用两个字描述的初衷在于第三个字是段基址，第二个字就是偏移，那么整个地址<code>0x00000</code>就是<code>0x00000 = 0x0000 * 16 + 0x0000</code>。即这里的IDT依旧是放在内存开始处。下面的GDTR结构的解读也是同理。</p>
 <p>与实模式不同的是，保护模式下的段寻址是通过GDT(Global Descriptor Table, 全局描述符表)完成的，GDT中存放的是段寄存器内容，其数据结构为数组。GDT在操作系统进程切换中意义重大，其中存放了每个任务的LDT(Local Descriptor Table, 局部描述符表)地址和TSS(Task Structure Segment, 任务状态段)地址，以完成进程中各段的寻址、现场保护与现场恢复。</p>
 <p>GDT的初始内容已经写在了setup程序中，如下</p>
-<pre><code class="language-shell">gdt:
+<pre><code class="language-armasm">gdt:
     .word   0,0,0,0     ! dummy
 
     .word   0x07FF      ! 8Mb - limit=2047 (2048*4096=8Mb)
@@ -212,7 +212,7 @@ while truees = ax
     .word   0x00C0      ! granularity=4096, 386
 </code></pre>
 <p>可以整理为如下一张表</p>
-<pre><code class="language-shell"> index |    GDT
+<pre><code class="language-armasm"> index |    GDT
 ------------------
    2   | 00C0 9200
        | 0000 07FF
@@ -224,40 +224,40 @@ while truees = ax
        | 0000 0000
 </code></pre>
 <p>其中每个GDT表项共64位，即8字节/4字，结构如下</p>
-<pre><code class="language-shell">31------------------------------16-15-----------------------0
+<pre><code class="language-armasm">31------------------------------16-15-----------------------0
              Base 0:15            |         Limit 0:15
 63--------56-55---52-51---------48-47---------40-39--------32
  Base 24:31 | Flags | Limit 16:19 | Access Byte | Base 16:23
 </code></pre>
 <p>Access Byte的结构如下</p>
-<pre><code class="language-shell">8---7-------5---4----3----2----1---0
+<pre><code class="language-armasm">8---7-------5---4----3----2----1---0
  Pr | Privl | 1 | Ex | Dc | RW | Ac
 </code></pre>
 <p>Flags的结构如下</p>
-<pre><code class="language-shell">8---7----6---5--4
+<pre><code class="language-armasm">8---7----6---5--4
  Gr | Sz | 0 | 0
 </code></pre>
 <p>特别说明的<code>Privl</code>为特权级，如果为<code>00</code>表示内核特权级，如果为<code>11</code>，则表明用户特权级；<code>Gr</code>标志位为颗粒度标志，如果为1，那么段限长的单位为4KB，如果为0，那么就是1B。</p>
 <p>显而易见，GDT将段基址与段限长拆分保存在不连续的bit位中。这是为了兼容286架构。那么现在GDT表项就很容易理解了。</p>
 <p>以第一项GDT为例，其内容为</p>
-<pre><code class="language-shell">00C0 9A00
+<pre><code class="language-armasm">00C0 9A00
 0000 07FF
 </code></pre>
 <p>第<code>0-15bit</code>与<code>48-51bit</code>构成段限长，内容为</p>
-<pre><code class="language-shell">007FF
+<pre><code class="language-armasm">007FF
 </code></pre>
 <p>将其转换为10进制就是2047bit，即2KB；再看一下颗粒度标志，其包含在最后一个字节，即</p>
-<pre><code class="language-shell">00C0    // 00000000 11000000
+<pre><code class="language-armasm">00C0    // 00000000 11000000
 </code></pre>
 <p>可见，颗粒度标志位的值为1，那么也就意味着段限长实际上为<code>0x007FF * 4KB = 8MB</code>。确定了段限长，我们再确定一下段基址，<code>16-31bit</code>、<code>32-39bit</code>、<code>56-63bit</code>构成了段基址，那么合起来就是</p>
-<pre><code class="language-shell">0x0000000
+<pre><code class="language-armasm">0x0000000
 </code></pre>
 <p>即内存始址。</p>
 <p>现在我们知道了GDT的内容与含义，那么设置GDT就是将GDT表的始址保存在GDTR(Global Descriptor Table Register, GDT基地址寄存器)中，通过下述指令完成</p>
-<pre><code class="language-shell">    lgdt    gdt_48      ! load gdt with whatever appropriate
+<pre><code class="language-armasm">    lgdt    gdt_48      ! load gdt with whatever appropriate
 </code></pre>
 <p>也就是GDT的始址信息保存在<code>gdt_48</code>标号处，其内容为</p>
-<pre><code class="language-shell">gdt_48:
+<pre><code class="language-armasm">gdt_48:
     .word   0x800       ! gdt limit=2048, 256 GDT entries
     .word   512+gdt,0x9 ! gdt base = 0X9xxxx
 </code></pre>
@@ -267,7 +267,7 @@ while truees = ax
 <p>这是进入保护模式的关键，因为保护模式下必须突破16位寻址以实现32位寻址，就是通过打开A20地址线实现的。</p>
 <p>IBM公司最初的PC机使用的是Intel 8088处理器。该微机中地址线只有20根(<code>A0-A19</code>)，当是RAM只有几百KB不到1MB，这20根地址线是完全够用的，所能寻址的最高地址为<code>0xffff:0xffff</code>，即1MB处(<code>0xfffff = 0xffff * 16 + 0xffff</code>)，那么对于超过1MB的寻址地址将环绕到内存始址处(注意这个细节，可以利用这个特点来检测A20地址线是否打开)。当1985年引入AT机时使用的Intel 80286处理器具有24根地址线，最高寻址16MB，并且有一个与8088完全兼容的实模式运行方式，但是，在寻址值超过1MB时，80286却无法像8088那样实现地址寻址环绕。为了完全实现兼容，IBM最终使用了一个被称之为A20的信号，当A20为0时，那么比特20及以上的地址线都会被清除，从而实现兼容。</p>
 <p>机器启动时，A20是默认关闭的，所以只能实现实模式下1MB寻址，那么要进入保护模式就需要打开A20，实现32位寻址。代码如下</p>
-<pre><code class="language-shell">! that was painless, now we enable A20
+<pre><code class="language-armasm">! that was painless, now we enable A20
 
     call  empty_8042
     mov   al,#0xD1      ! command write
@@ -280,7 +280,7 @@ while truees = ax
 <p>选通A20之后，Linux 0.11就可以实现32位寻址，其线性寻址空间就是4GB!</p>
 <h2>五、对8259A中断控制器进行重编程</h2>
 <p>由于CPU在保护模式下，<code>int 0x00 - int 0x1F</code>被Intel保留为内部不可屏蔽中断和异常中断。如果不对8259A进行重新编程的话，那么也就意味着<code>int 0x00 - int 0x1F</code>会被保护模式下的Intel保留中断所覆盖掉，因此，必须重新编程，其本质就是重新建立映射关系。代码如下</p>
-<pre><code class="language-shell">! well, that went ok, I hope. Now we have to reprogram the interrupts :-(
+<pre><code class="language-armasm">! well, that went ok, I hope. Now we have to reprogram the interrupts :-(
 ! we put them right after the intel-reserved hardware interrupts, at
 ! int 0x20-0x2F. There they won't mess up anything. Sadly IBM really
 ! messed this up with the original PC, and they haven't been able to
@@ -316,7 +316,7 @@ while truees = ax
     out	#0xA1,al
 </code></pre>
 <p>重新编程前后的中断请求号与中断号之间的对应关系如下</p>
-<pre><code class="language-shell">    before       |        after
+<pre><code class="language-armasm">    before       |        after
 -----------------------------------
 IRQ0  -&gt; 0X00    |    IRQ0  -&gt; 0X20
 IRQ1  -&gt; 0X01    |    IRQ1  -&gt; 0X21
@@ -326,14 +326,14 @@ IRQ15 -&gt; 0X0F    |    IRQ15 -&gt; 0X2F
 </code></pre>
 <h2>六、进入32位保护模式</h2>
 <p>setup执行以来，从关中断到对8259A重编程，都是在为进入保护模式做准备，下面两行代码直接设置CPU进入32位保护模式运行。</p>
-<pre><code class="language-shell">    mov	ax,#0x0001  ! protected mode (PE) bit
+<pre><code class="language-armasm">    mov	ax,#0x0001  ! protected mode (PE) bit
     lmsw    ax      ! This is it!
 </code></pre>
 <p><code>lmsw</code>指令的作用是加载机器状态字，即load Machine Status Word，也称之为控制寄存器<code>CR0</code>，共32位，存放系统控制标志，其第0位为<code>PE(Protected Mode)</code>，若为1则表明设置处理器工作方式为保护模式。</p>
 <p><code>#0x0001</code>就是总共16位，最低位为1，上述代码加在<code>CR0</code>之后就可以通过ax寄存器将<code>PE</code>位置1，自此，CPU正式进入保护模式。</p>
 <h2>七、跳转！进入system执行head.s</h2>
 <p>CPU进入保护模式工作后，最明显的特征就是要根据GDT决定后续执行程序所在段(即，要执行的程序在哪)。setup向head.s跳转也是同理，如下</p>
-<pre><code class="language-shell">    jmpi    0,8     ! jmp offset 0 of segment 8 (cs)
+<pre><code class="language-armasm">    jmpi    0,8     ! jmp offset 0 of segment 8 (cs)
 </code></pre>
 <p>通过段间跳转指令<code>jmpi</code>跳转至<code>8:0</code>处执行，这里的8如何理解呢？</p>
 <p>如果将8转为二进制就容易了，即<code>1000</code>，这里的每个比特位都有含义，第一第二位表示内核特权级，前面说过，<code>00</code>表示GDT表项为内核特权级，<code>11</code>则为用户特权级；第三位用于区分GDT和LDT，若为<code>0</code>则表示GDT，<code>1</code>表示LDT；第四位<code>1</code>表示GDT的第二项，即索引为1的那一项，我们前面刚好分析过这一项。那么上述代码就是跳转到以第二项GDT的base为段地址，以0位偏移的内存处。上面分析过，第二项GDT的base为<code>0x0000000</code>，即内存始址，那么再加上偏移0还是内存始址，这里是什么呢？就是system模块的head.s程序。</p>

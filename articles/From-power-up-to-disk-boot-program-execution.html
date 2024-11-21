@@ -15,7 +15,7 @@
 <p>那么软盘第一个扇区中的程序是什么呢？就是Linux的磁盘引导程序<code>bootsect</code>。</p>
 <h2>二、bootsect对内存的规划</h2>
 <p>bootsect是完全用汇编语言写成的，其首先要对实模式下可寻址(最大范围<code>1MB</code>,即<code>0x00000 ～ 0xFFFFF</code>)的内存进行规划。代码如下所示</p>
-<pre><code class="language-shell">SYSSIZE  = 0x3000
+<pre><code class="language-armasm">SYSSIZE  = 0x3000
 SETUPLEN = 4                    ! nr of setup-sectors
 BOOTSEG  = 0x07c0               ! original address of boot-sector
 INITSEG  = 0x9000               ! we move boot here - out of the way
@@ -30,7 +30,7 @@ ENDSEG   = SYSSEG + SYSSIZE     ! where to stop loading
 <p>接下来bootsect将会按照上述内存布局进行相应的操作。</p>
 <h2>三、bootsect对自身的复制</h2>
 <p>bootsect先将自身的全部内容(1个扇区)从内存<code>0x07C00</code>处(段地址BOOTSEG)复制到内存<code>0x90000</code>处(段地址INITSEG),对应的汇编代码如下</p>
-<pre><code class="language-shell">entry _start
+<pre><code class="language-armasm">entry _start
 _start:
     mov ax,#BOOTSEG
     mov ds,ax
@@ -44,11 +44,11 @@ _start:
 </code></pre>
 <p>数据段寄存器ds与源变址寄存器si构成bootsect的源地址<code>0x07c00</code>，即<code>ds:si = 0x07c0:0x0000</code>;而附加段寄存器es与目的变址寄存器di构成了bootsect的目的地址<code>0x9000</code>，即<code>es:di = 0x9000:0x0000</code>。通过计数寄存器cx控制循环的次数，这里<code>cx = 256</code>,由于cx为16位寄存器，即这里代表256个字，也就是<code>512Byte</code>，刚好是一个扇区的数目。然后通过<code>rep movw</code>循环进行复制操作。</p>
 <p>这段代码执行完毕后，整个内存空间将含有两段bootsect的数据，即以BOOTSEG开始的<code>512Byte</code>数据和以INITSEG开始的<code>512Byte</code>数据。接下来通过执行段间跳转指令跳转到INITSEG段的go代码块处继续执行bootsect，如下</p>
-<pre><code class="language-shell">	jmpi	go,INITSEG
+<pre><code class="language-armasm">	jmpi	go,INITSEG
 </code></pre>
 <h2>四、设置段寄存器ds、es、ss</h2>
 <p>进入go代码块中，要设置ds、es、ss寄存器，代码如下</p>
-<pre><code class="language-shell">go:	mov	ax,cs
+<pre><code class="language-armasm">go:	mov	ax,cs
 	mov	ds,ax
 	mov	es,ax
 ! put stack at 0x9ff00.
@@ -60,7 +60,7 @@ _start:
 <p>至此，由于对ss、sp寄存器的设置，此后程序便可以基于栈进行复杂数据运算了。</p>
 <h2>五、加载setup程序</h2>
 <p>接下来bootsect需要将setup程序加载至SETUPSEG处，setup位于软盘/磁盘第2扇区到第5扇区连续四个扇区，共<code>2KB(512Byte * 4 = 2048Byte = 2KB)</code>,代码如下</p>
-<pre><code class="language-shell">! load the setup-sectors directly after the bootblock.
+<pre><code class="language-armasm">! load the setup-sectors directly after the bootblock.
 ! Note that 'es' is already set up.
 
 load_setup:
@@ -84,7 +84,7 @@ load_setup:
 </ul>
 <p>根据上述解释，这段程序指明通过驱动器0(dl)的0号磁头(dh)对应盘面的0磁道(ch)第2扇区(cl)开始的连续4个扇区(al)读到内存中(ah)<code>es:bx</code>指向的位置<code>0x9000:0200</code>，即<code>0x90200</code>处。</p>
 <p>BIOS对文件、磁盘等IO的操作是通过检测CF位来判断是否成功的，若<code>CF = 0</code>表示成功，<code>jnc</code>指令通过判断<code>CF = 0</code>来实现跳转，即读取成功则跳转至<code>ok_load_setup</code>处继续执行。代码如下</p>
-<pre><code class="language-shell">ok_load_setup:
+<pre><code class="language-armasm">ok_load_setup:
 
 ! Get disk drive parameters, specifically nr of sectors/track
 
@@ -106,7 +106,7 @@ sectors:
 <p>加载成功后执行到ok_load_setup获取磁盘参数表之后，就要为加载system模块做准备了。</p>
 <h2>六、加载system模块</h2>
 <p>由于system模块多达240扇区，因此加载起来需要一定的时间，所以需要打印一些提示字符串(Loading system ...)告诉用户并未死机，代码如下</p>
-<pre><code class="language-shell">! Print some inane message
+<pre><code class="language-armasm">! Print some inane message
 
 	mov	ah,#0x03		! read cursor pos
 	xor	bh,bh
@@ -132,7 +132,7 @@ msg1:
 </ul>
 <p>然后调用<code>int 0x10</code>中断的功能号为13H的子功能打印字符串。</p>
 <p>已经提示用户正在加载系统了，那么接下来就是正式加载system模块，如下</p>
-<pre><code class="language-shell">! ok, we've written the message, now
+<pre><code class="language-armasm">! ok, we've written the message, now
 ! we want to load the system (at 0x10000)
 
 	mov	ax,#SYSSEG
@@ -145,7 +145,7 @@ msg1:
 <h2>七、确定根设备号</h2>
 <p>首先查看根设备号是否已经定义，如果已经定义(即!=0)那么将检查过的根设备号保存起来，即<code>mov root_dev,ax</code>;否则根据BIOS报告的每磁道扇区数来确定使用<code>/dev/PS0(2,28)</code>还是<code>/dev/at0(2,8)</code>。这里两个设备文件的含义为，在Linux中软驱的主设备号是2，次设备号 = type × 4 + nr，其中nr为0 - 3，分别对应软驱A、B、C或D；type是软驱的类型，1.2MB的驱动器为2,1.44MB的驱动器为7。所以1.2MB的A驱动器的次设备号为2 × 4 + 0 = 8，所以<code>/dev/at0(2,8)</code>指的是1.2MB A驱动器；而1.44MB A驱动器的次设备号为7 × 4 + 0 = 28，所以<code>/dev/PS0(2,28)</code>指的是1.44MB A驱动器。</p>
 <p>其次，设备号的计算公式为：设备号 = 主设备号 × 256 + 次设备号。那么1.44MB A驱动器的设备号就是2 × 256 + 28 = 540，对应的16进制就是0x021c；同理计算1.2MB A驱动器的设备号为0x0208。</p>
-<pre><code class="language-shell">! After that we check which root-device to use. If the device is
+<pre><code class="language-armasm">! After that we check which root-device to use. If the device is
 ! defined (!= 0), nothing is done and the given device is used.
 ! Otherwise, either /dev/PS0 (2,28) or /dev/at0 (2,8), depending
 ! on the number of sectors that the BIOS reports currently.
@@ -174,7 +174,7 @@ root_dev:
 <p>先将上述获取到的每磁道扇区数传送给通用寄存器bx，如果<code>bx = 15</code>，即每磁道扇区数为15,那么说明就是1.2MB的驱动器,如果为18，那么就是1.44MB的软驱，然后跳转到<code>root_defined</code>中将通用寄存器ax中定义的根设备号保存起来。如果获取到的每道磁盘扇区数既不为15也不为18那么就会跳过<code>je</code>指令直接进入<code>undef_root</code>段中，进入死循环。</p>
 <h2>八.跳转至setup</h2>
 <p>以上bootsect的任务几乎全部完成了，最后需要执行的指令就是</p>
-<pre><code class="language-shell">! after that (everyting loaded), we jump to
+<pre><code class="language-armasm">! after that (everyting loaded), we jump to
 ! the setup-routine loaded directly after
 ! the bootblock:
 
