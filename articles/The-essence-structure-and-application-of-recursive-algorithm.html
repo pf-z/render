@@ -1,6 +1,6 @@
-<h3>Introduction</h3>
+<h2>Introduction</h2>
 <p>In common algorithm strategies, I always think recursion is full of aesthetic feeling. But if you don't have a deep understanding to it, aesthetic feeling will becomes a headache. So this article will thoroughly introduce recursive algorithm, let's enjoy the beauty of recursive algorithm.</p>
-<h3>What's the essence of recursion?</h3>
+<h2>What's the essence of recursion?</h2>
 <p>Most articles say that recursion is you call yourself in a function or method. Yes, it's true in form, but what is the purpose of recursion and when should we apply recursion algorithm? That's a good question.</p>
 <p>The essence of recursion is loop, and its purpose is to solve the problem of structure self-similarity. But what's the problem of structure self-similarity?</p>
 <p>The problem of structure self-similarity refers to the substructure of the structure still keeps the nature of the structure itself, but the scale is different. For example, the following data structures belong to structural self similarity:</p>
@@ -9,7 +9,7 @@
 </blockquote>
 <p>Strictly speaking, there is no difference between an array and a sequence, but they are distinguished here for the sake of below smooth writing.</p>
 <p>Maybe you have some questions about description above. Don't worry, keep looking down.</p>
-<h3>What's the structure of recursion?</h3>
+<h2>What's the structure of recursion?</h2>
 <p>After careful analysis, it is found that there are two types of recursive algorithm, each of which has a different structure.</p>
 <ul>
 <li>Recursion for a certain value(RfV): In general, there is a return value, such as finding the maximum value of an array or the sum of array elements.</li>
@@ -181,7 +181,7 @@ public class Invert1 {
     
 }
 </code></pre>
-<h3>Sequence, a special structure self-similarity</h3>
+<h2>Sequence, a special structure self-similarity</h2>
 <p>The reason why sequence is a special issue of structure self-similarity is its elements are calculated by formula, so its structure self-similarity is not as obvious as array and linked list. Let's feel it through a question.</p>
 <blockquote>
 <p>Output digit by digit from high to low, and there is a space after each number.</p>

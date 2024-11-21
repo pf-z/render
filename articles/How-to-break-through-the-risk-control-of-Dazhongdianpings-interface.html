@@ -1,13 +1,13 @@
 <blockquote>
 <p>声明：本文仅供技术交流之用，严禁非法用途，否则责任自负。</p>
 </blockquote>
-<h1>Introduction</h1>
+<h2>Introduction</h2>
 <p>大众点评网有着极为严格的反爬策略，除过常规的反爬手段之外，最重要的一环就是<code>_token</code>参数。具体而言，该参数可视为对请求风险的判别依据，其通过对document、window、screen、element对象以及自动化测试框架特征值等信息的综合判断，并融合请求体、查询字符串以及<code>URL</code>等数据生成<code>token</code>值，然后将该值作为请求体的一部分POST至后端，由后端完成解密从而达到识别风险的目的。</p>
 <p>若请求由正常的浏览器发起（这意味着<code>_token</code>的值是正常的），则风险等级（riskLevel）为0，否则风险等级将会被提升到6（这意味着<code>_token</code>值生成错误或者非正常发起请求），将会进一步限制用户操作。被限制操作的用户若要继续操作，则需要通过滑动验证块的方式来解除高级别风控，但是根据笔者实际操作而言，滑动验证块仅仅在常规的反爬手段下有用（比如说请求过于频繁的情况），而对于高级别风控，即使验证块滑动成功也无法解除高风险等级限制，无论手动还是自动化操作。</p>
 <p>由于<code>_token</code>的构造会考虑到自动化测试框架的特征值，这意味着诸如selenium之类的框架无用武之地，由该框架发起的请求riskLevel直接会被提升至6。有一种方法是通过中间人代理将对应js文件中的selenium特征值过滤或替换掉，从而规避被检测的风险。但是本文不采用该方法来处理。这是因为，一方面本次爬取数据量较大，而selenium速度较慢，故不适用于通过selenium来爬取；另一方面，即使过滤了selenium特征值，大众点评必然还会有其它的方法来识别它，所以该方法治标不治本。<code>_token</code>的生成还会考虑到document、window、screen、element等对象，并取其属性值，如果使用<code>requests</code>库来爬取，则无法读取该值，<code>_token</code>参数依然无法生成。这就形成了一个矛盾，两种办法都有缺陷，但是通过修改相应文件的js代码便可以解决requests库的使用导致无法读取相关属性值的问题。</p>
 <p>此外，需要注意的是，大众点评网定义selenium特征值的<code>rohr.min.js</code>文件中，将其表示为了16进制，因此无法全局搜索。但在该文件开头定义了一个数组<code>_$_543c</code>，其中包含相关关键字及selenium的特征值序列，对其元素调用<code>.encode(&quot;utf-8&quot;)</code>方法可将其转化为ASCII字符串，从而方便过滤与替换。</p>
 <p>基于上述，本文将会在构造生成<code>_token</code>参数的函数参数的基础上，对相应的js文件进行修改，然后通过pyexecjs驱动Node.js运行时执行之，最终获取<code>_token</code>值以实现顺利登录。</p>
-<h1>API analysis</h1>
+<h2>API analysis</h2>
 <p>通过对大众点评登录流程进行追踪，可发现其完整的接口调用链如下（均使用POST方法）：</p>
 <ol>
 <li>https://account.dianping.com/account/ajax/checkRisk</li>
@@ -76,7 +76,7 @@
 </code></pre>
 <p>若登录成功，则返回200状态码，<code>msg</code>对象中<code>info</code>为空，这是因为可以通过其余接口获取用户详细信息。</p>
 <p>纵观上述对相关接口的分析，可以发现整个登录流程的核心就是参数<code>_token</code>的生成，接下来重点说明之。</p>
-<h1>_token generation strategy</h1>
+<h2>_token generation strategy</h2>
 <p>通过抓包获取所有的js文件，并全局搜索<code>_token</code>，发现该关键词存在于下述两个文件当中</p>
 <ol>
 <li>https://www.dpfile.com/app/app-easy-login-frame/js/common.min.63556046f9f14a990d06e61e2afe0511.js</li>
@@ -149,6 +149,6 @@ token = execjs.compile(open(r&quot;replace your js's path&quot;).read()).call('g
 print(token)
 </code></pre>
 <p>执行接口<code>/account/ajax/mfastlogin</code>时<code>_token</code>的生成策略也一样，只需要更换Python代码中<code>call()</code>的第二个参数即可。</p>
-<h1>Conclusion</h1>
+<h2>Conclusion</h2>
 <p>本文较为详细地介绍了大众点评网的<code>_token</code>生成策略，通过修改对应js文件并以Python执行的方式来生成具体的<code>_token</code>值，可以有效突破大众点评网的接口风控，实现数据的正常爬取。缺陷在于通过pyexecjs驱动Node.js运行时执行js文件速度略慢，理想的方式是对<code>_token</code>生成技术进行逆向，这将会在下一篇文章中详细介绍，敬请关注。</p>
 <p>修改后的rohr.min.js文件可以关注本公众号，并后台回复(rohr)获取。</p>

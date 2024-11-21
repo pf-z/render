@@ -841,50 +841,26 @@ SourceFile: &quot;TestClass.java&quot;
 <p><strong>需要说明的是，方法中的参数以及局部变量均存储在栈帧中的局部变量表中，而对局部变量表中参数与局部变量的操作是在栈帧的操作数栈中进行的。</strong></p>
 <p>根据LineNumberTable指出的源码与字节码指令的对应关系得知</p>
 <ul>
-<li>第0条字节码指令<code>iconst_1</code>对应的是源码中的第10行<code>x = 1;</code>，含义是<strong>将int型1推送至栈顶</strong>；
-<ul>
+<li>第0条字节码指令<code>iconst_1</code>对应的是源码中的第10行<code>x = 1;</code>，含义是<strong>将int型1推送至栈顶</strong>；</li>
 <li>第1条字节码指令<code>istore_1</code>，含义是<strong>将栈顶int数值存入本地变量表中的第二个Slot中</strong>；</li>
-</ul>
-</li>
-<li>第2条字节码指令<code>iload_1</code>对应源码中的第11行<code>return x;</code>，含义是<strong>将第2个int型本地变量推送至栈顶</strong>；有个疑问，int型1不是本来就在栈顶吗，怎么又推送一次？还出现了个<strong>第二个</strong>？由于第1条字节码指令的执行，原来栈顶的int型1已经被存入局部变量表中的第二个Slot中，所以已经不在栈顶了，所以第2条字节码指令需要将本地变量表中的第2个Slot的int型1值取出来推送至栈顶；
-<ul>
+<li>第2条字节码指令<code>iload_1</code>对应源码中的第11行<code>return x;</code>，含义是<strong>将第2个int型本地变量推送至栈顶</strong>；有个疑问，int型1不是本来就在栈顶吗，怎么又推送一次？还出现了个<strong>第二个</strong>？由于第1条字节码指令的执行，原来栈顶的int型1已经被存入局部变量表中的第二个Slot中，所以已经不在栈顶了，所以第2条字节码指令需要将本地变量表中的第2个Slot的int型1值取出来推送至栈顶；</li>
 <li>第3条字节码指令<code>istore_2</code>，含义是<strong>将栈顶int数值存入本地变量表中的第三个Slot中</strong>；也就是将栈顶的int型1再次存入第三个Slot中；</li>
-</ul>
-</li>
-<li>第4条字节码指令<code>iconst_3</code>对应源码中的第16行<code>x = 3;</code>，含义是<strong>将int型3推送至栈顶</strong>。
-<ul>
+<li>第4条字节码指令<code>iconst_3</code>对应源码中的第16行<code>x = 3;</code>，含义是<strong>将int型3推送至栈顶</strong>。</li>
 <li>第5条字节码指令<code>istore_1</code>的含义是<strong>将栈顶int型数值存入局部变量表中的第二个Slot中</strong>，由于int型1已经被从第二个Slot中取出推送至栈中后又被存入第三个Slot中，所以第二个Slot空出来了，任意一个int型数值都可以进入；这条字节码指令执行后，局部变量表中的第二个Slot中为int型3；</li>
-</ul>
-</li>
-<li>第6条字节码指令<code>iload_2</code>对应源码中的第11行<code>return x;</code>。含义是<strong>将局部变量表中的第三个Slot的值推送至栈顶</strong>，也就是int型1被推送至栈顶。
-<ul>
+<li>第6条字节码指令<code>iload_2</code>对应源码中的第11行<code>return x;</code>。含义是<strong>将局部变量表中的第三个Slot的值推送至栈顶</strong>，也就是int型1被推送至栈顶。</li>
 <li>第7条字节码指令<code>ireturn</code>含义是<strong>从当前方法返回int</strong>。即将该方法的返回值返回给该方法的调用者(即虚拟机栈当前线程调用栈的在inc方法(栈帧)执行时位于其底部的栈帧)。返回值为1，<strong>从这里也可以看出，方法的返回值仍然是从操作数栈中返回而不是局部变量表，所以没有返回3而是1。这里也揭示了try-finally块中返回值的原理。</strong></li>
-</ul>
-</li>
 </ul>
 <p>以上是try中没有发生异常的情况下字节码指令的执行方式，如果发生了类型为<code>Class java/lang/Exception</code>的异常，即字节码指令第0条到第3条(不包括第4条)，那么根据异常表的指示将会跳转到第8行处理。由于字节码指令第4条才会将3推送至栈顶，而第五条才会将3存入第2个Slot，也就意味着如果发生异常就不会执行到第4条和第五条字节码指令，也就意味着第2个Slot并没有值(根据第2条字节码指令，局部变量表中的第2个Slot中的1被推送至栈顶后又存放到了第3个Slot中，所以第二个Slot没有值)如下</p>
 <ul>
 <li>第8条字节码指令<code>astore_2</code>对应源码中的第12行<code>} catch (Exception e) {</code>，代表的是异常处理，继续看下一行，因为是一个整体；</li>
-<li>第9条字节码指令<code>iconst_2</code>对应源码中的第13行<code>x = 2;</code>，是对异常的处理，含义为<strong>将int型2推送至栈顶</strong>；
-<ul>
+<li>第9条字节码指令<code>iconst_2</code>对应源码中的第13行<code>x = 2;</code>，是对异常的处理，含义为<strong>将int型2推送至栈顶</strong>；</li>
 <li>第10条字节码指令<code>istore_1</code>一目了然，含义是将<strong>将栈顶int数值2存入本地变量表中的第二个Slot中</strong>；由于出现了异常，上面已经解释过了，第二个Slot无值，因此可以存放而不会覆盖别的值。</li>
-</ul>
-</li>
-<li>第11条字节码指令<code>iload_1</code>对应源码中的第14行<code>return x;</code>，含义是<strong>将局部变量表中第2个Slot的值2推送至栈顶</strong>；
-<ul>
+<li>第11条字节码指令<code>iload_1</code>对应源码中的第14行<code>return x;</code>，含义是<strong>将局部变量表中第2个Slot的值2推送至栈顶</strong>；</li>
 <li>第12条字节码指令<code>istore_3</code>的含义是将栈顶的值2存入局部变量表中的第四个Slot中，因为第三个Slot存放的是int型1，上面也解释过了；<code>由于是不管有没有发生异常，都会执行finally，所以接下来执行finally</code>；</li>
-</ul>
-</li>
-<li>第13条字节码指令<code>iconst_3</code>对应的仍是源码第16行<code>x = 3;</code>，含义是<strong>将int型3推送至栈顶</strong>。(注意，发生异常后try中并未执行到这里)；含义是将int型3推送至栈顶；
-<ul>
+<li>第13条字节码指令<code>iconst_3</code>对应的仍是源码第16行<code>x = 3;</code>，含义是<strong>将int型3推送至栈顶</strong>。(注意，发生异常后try中并未执行到这里)；含义是将int型3推送至栈顶；</li>
 <li>第14条字节码指令<code>istore_1 </code>的含义是<strong>将栈顶的3存入局部变量表中的第2个Slot中</strong>，由于第11条字节码指令<code>iload_1</code>将局部变量表第2个Slot中的数据2推送至了栈顶，紧接着第12条指令将栈顶的2存入了第四个Slot中，所以此时Slot无值，可以存入栈顶的3；</li>
-</ul>
-</li>
-<li>第15条字节码指令<code>iload_3</code>对应源码的第14行<code>return x;</code>，含义是<strong>将局部变量表第4个Slot中的值推送至栈顶，即将2推送至栈顶；</strong>
-<ul>
+<li>第15条字节码指令<code>iload_3</code>对应源码的第14行<code>return x;</code>，含义是<strong>将局部变量表第4个Slot中的值推送至栈顶，即将2推送至栈顶；</strong></li>
 <li>第16条字节码指令<code>ireturn</code>含义是<strong>从当前方法返回int</strong>。即将该方法的返回值返回给该方法的调用者(即虚拟机栈当前线程调用栈的在inc方法(栈帧)执行时位于其底部的栈帧)。返回值为2，<strong>这里也揭示了try-catch-finally块中返回值的原理。</strong></li>
-</ul>
-</li>
 </ul>
 <p>以上是字节码指令第0条到第3条(不包括第4条)发生了类型为<code>Class java/lang/Exception</code>的异常的处理方式，如果发生了别的异常，即类型为<code>any</code>，那么将会跳转到第17条字节码指令处理。从方法表集合的属性表集合的Code属性的异常表集合得知，第8到12行字节码、17到18行字节码发生类型为<code>any</code>的异常，也会调到第17条字节码指令进行处理，所以统一看一下</p>
 <ul>
