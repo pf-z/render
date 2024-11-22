@@ -18,7 +18,7 @@ export let author = {
             url: 'https://orcid.org/0009-0008-1791-2942'
         },
         wechat: {
-            url: '/qrcode.jpg',
+            url: '/cs/qrcode.jpg',
         },
         github: {
             url: 'https://github.com/pf-z'
