@@ -7,13 +7,15 @@
 <p>所以整个平行六面体的体积为</p>
 <p>\begin{equation}V = Sh = |\alpha_1 \times \alpha_2|Prj_f\alpha_3 = \overbrace{\underbrace{|\alpha_1||\alpha_2|\sin\theta|}_{(a)}\alpha_3|\cos\beta}^{(b)}\end{equation}</p>
 <p>上式中，$(a)$为向量$\alpha_1, \alpha_2$的向量积的模，即垂直于向量$\alpha_1, \alpha_2$构成的平面的法向量（即分别垂直于向量$\alpha_1, \alpha_2$）的模，$(b)$为该法向量（垂直于向量$\alpha_1, \alpha_2$构成的平面的法向量）与向量$\alpha_3$的数量积，从而上式实际上定义了向量$\alpha_1, \alpha_2, \alpha_3$的混合积$\left[\alpha_1\ \alpha_2\ \alpha_3\right]$。即满足</p>
-<p>\begin{equation}V = Sh = \left[\alpha_1\ \alpha_2\ \alpha_3\right] = |\alpha_1 \times \alpha_2|Prj_f\alpha_3 = |\alpha_1||\alpha_2|\sin\theta|\alpha_3|\cos\beta \tag{c}\end{equation}</p>
+<p>\begin{equation}
+V = Sh = \left[\alpha_1\ \alpha_2\ \alpha_3\right] = |\alpha_1 \times \alpha_2|Prj_f\alpha_3 = |\alpha_1||\alpha_2|\sin\theta|\alpha_3|\cos\beta,\ (c)
+\end{equation}</p>
 <p><strong>也就是说三向量的混合积本质上就是这三个向量构成的平行六面体的体积</strong>。</p>
 <p>上述已经给出了三个向量构成的平行六面体的体积的混合积表达式，接下来将这一本质上是求体积的混合积表达式转化为也是本质上求体积的行列式表达形式，即求三向量构成平行六面体的体积的不同表达形式。</p>
 <p>向量$\alpha_1,\alpha_2$的向量积的坐标表达式为</p>
 <p>\begin{equation}\alpha_1 \times \alpha_2 = \begin{vmatrix}i &amp; j &amp; k\newline a_{11} &amp; a_{12} &amp; a_{13}\newline a_{21} &amp; a_{22} &amp; a_{23}\end{vmatrix} = \begin{vmatrix}a_{12} &amp; a_{13}\newline a_{22}&amp;a_{23}\end{vmatrix}i - \begin{vmatrix}a_{11} &amp; a_{13}\newline a_{21}&amp;a_{23}\end{vmatrix}j + \begin{vmatrix}a_{11} &amp; a_{12}\newline a_{21}&amp;a_{22}\end{vmatrix}k\end{equation}</p>
 <p>再求上述向量（法向量）与向量$\alpha_3$的数量积，整体上即为混合积。由数量积的坐标表达式，得</p>
-<p>\begin{equation}\left[\alpha_1\ \alpha_2\ \alpha_3\right] = (\alpha_1 \times \alpha2)·\alpha_3 = a_{31}\begin{vmatrix}a_{12} &amp; a_{13}\newline a_{22}&amp;a_{23}\end{vmatrix} - a_{32}\begin{vmatrix}a_{11} &amp; a_{13}\newline a_{21}&amp;a_{23}\end{vmatrix} + a_{33}\begin{vmatrix}a_{11} &amp; a_{12}\newline a_{21}&amp;a_{22}\end{vmatrix} = \begin{vmatrix}a_{11} &amp; a_{12} &amp; a_{13}\newline a_{21} &amp; a_{22} &amp; a_{23}\newline a_{31} &amp; a_{32} &amp; a_{33}\end{vmatrix}\tag{d}\end{equation}</p>
+<p>\begin{equation}\left[\alpha_1\ \alpha_2\ \alpha_3\right] = (\alpha_1 \times \alpha2)·\alpha_3 = a_{31}\begin{vmatrix}a_{12} &amp; a_{13}\newline a_{22}&amp;a_{23}\end{vmatrix} - a_{32}\begin{vmatrix}a_{11} &amp; a_{13}\newline a_{21}&amp;a_{23}\end{vmatrix} + a_{33}\begin{vmatrix}a_{11} &amp; a_{12}\newline a_{21}&amp;a_{22}\end{vmatrix} = \begin{vmatrix}a_{11} &amp; a_{12} &amp; a_{13}\newline a_{21} &amp; a_{22} &amp; a_{23}\newline a_{31} &amp; a_{32} &amp; a_{33}\end{vmatrix},\ (d)\end{equation}</p>
 <p>从而$(c),(d)$式即为三向量构成平行六面体的体积的不同表达式。思考这样一个问题，三向量构成的平行六面体的体积何时为0？</p>
 <p>从$(c)$式看，若向量$\alpha_1,\alpha_2$的夹角$\theta$为0，即$\sin\theta = \sin 0 = 0$，那么$(c)$式将为0；另一方面，若向量$\alpha_3$与法向量$f$垂直，即$\beta = \pi / 2$，那么$\cos\beta = \cos \pi / 2 = 0$。这两种情况都会导致平行六面体的体积为0。</p>
 <ul>
